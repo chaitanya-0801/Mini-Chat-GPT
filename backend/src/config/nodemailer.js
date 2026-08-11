@@ -11,7 +11,7 @@ export const sendMail = async (email,subject,text) => {
       },
     });
     const info = await transporter.sendMail({
-      from: '"Chaitanya" <no-reply@yourapp.com>',
+      from: '"ChatSync" <no-reply@yourapp.com>',
       to: email,
       subject,
       html: `<b>${text}</b>`,

@@ -8,7 +8,7 @@ const Login = () => {
       <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white">Welcome Back</h1>
-          <p className="text-zinc-400 mt-2">Login to continue using MiniGPT</p>
+          <p className="text-zinc-400 mt-2">Login to continue using ChatSync</p>
         </div>
 
         <Form formType="login" />

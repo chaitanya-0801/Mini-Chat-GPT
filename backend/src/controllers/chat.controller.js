@@ -8,6 +8,7 @@ import { verifyAndGetChat } from "../utils/verifyChat.js";
 import generateUniqueSeq from "../utils/generateSeq.js";
 import { sendMail } from "../config/nodemailer.js";
 import AppError from "../utils/ApiError.js";
+import { getChatInvitationEmail } from "../utils/EmailFormat/ChatInvite.js";
 
 const askQuestion = async (req, res, next) => {
   try {
@@ -263,7 +264,7 @@ const addAccess = async (req, res, next) => {
       return sendMail(
         targetUser.email,
         `New Chat Shared by ${req.user.name}`,
-        link,
+        getChatInvitationEmail(req.user.name,link),
       );
     });
 

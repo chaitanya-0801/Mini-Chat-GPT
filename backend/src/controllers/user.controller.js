@@ -9,6 +9,8 @@ import { sendMail } from "../config/nodemailer.js";
 import generateUniqueSeq from "../utils/generateSeq.js";
 import AppError from "../utils/ApiError.js";
 import verifyGoogleToken from "../utils/google.js";
+import {getVerificationEmail} from "../utils/EmailFormat/EmailVerifylink.js";
+import { getPasswordResetEmail } from "../utils/EmailFormat/PasswordReset.js";
 
 const addNewUser = async (req, res, next) => {
   try {
@@ -122,7 +124,7 @@ const resetPasswordToken = async (req, res, next) => {
       { upsert: true, new: true },
     );
     const link = `${process.env.FRONTEND_URL}/change-password/${seq}/${checkUser._id}`;
-    await sendMail(email, "Password Reset Link", link);
+    await sendMail(email, "Password Reset Link", getPasswordResetEmail(link));
 
     res.status(200).json({
       success: true,
@@ -187,7 +189,7 @@ const sendEmailVerifyLink = async (req, res, next) => {
     );
 
     const link = `${process.env.FRONTEND_URL}/verify-email/${seq}/${checkUser._id}`;
-    const email = await sendMail(req.user.email, "Email Verify Link", link);
+    const email = await sendMail(req.user.email, "Email Verify Link", getVerificationEmail(user.email,link));
     console.log(email);
     res.status(200).json({
       success: true,

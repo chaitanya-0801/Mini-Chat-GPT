@@ -301,7 +301,7 @@ const ChatScreen = () => {
               <FormField
                 id="prompt"
                 type="text"
-                placeholder="Message MiniGPT..."
+                placeholder="Message ChatSync..."
                 register={register}
               />
             </div>
