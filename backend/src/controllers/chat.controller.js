@@ -18,12 +18,14 @@ const askQuestion = async (req, res, next) => {
     let chat;
 
     if (!chatId) {
+      const aiResponse = await generateResponse(`Genrtae a single  name for chat with following prompt do not give any other text with that    ${prompt}`);
+      console.log(aiResponse)
       const noOfChats = await ChatModel.countDocuments({
         owner: user.id,
       });
 
       chat = await ChatModel.create({
-        name: `Chat ${noOfChats + 1}`,
+        name: aiResponse,
         owner: user.id,
       });
     } else {
@@ -95,16 +97,22 @@ const askQuestion = async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };
 
 const pinUnpinChat = async (req, res, next) => {
   try {
+    const { user } = req;
     const { chatId } = req.params;
     const chat = await verifyAndGetChat(chatId);
-
+    const email_verified = await UserModel.findById(user.id).select(
+      "isMailVerified",
+    );
+    console.log(email_verified);
+    if (!email_verified.isMailVerified) {
+      throw new AppError("Email is Not verified Kindly verify Email", 400);
+    }
     chat.isPinned = !chat.isPinned;
     await chat.save();
 
@@ -116,15 +124,23 @@ const pinUnpinChat = async (req, res, next) => {
       chat,
     });
   } catch (error) {
-    console.error(error);
 
     next(error);
   }
 };
 const archiveChat = async (req, res, next) => {
   try {
+    const { user } = req;
     const { chatId } = req.params;
     const chat = await verifyAndGetChat(chatId);
+
+    const email_verified = await UserModel.findById(user.id).select(
+      "isMailVerified",
+    );
+    console.log(email_verified);
+    if (!email_verified.isMailVerified) {
+      throw new AppError("Email is Not verified Kindly verify Email", 400);
+    }
 
     chat.isArchived = !chat.isArchived;
     await chat.save();
@@ -137,7 +153,6 @@ const archiveChat = async (req, res, next) => {
       chat,
     });
   } catch (error) {
-    console.error(error);
 
     next(error);
   }
@@ -151,6 +166,13 @@ const generateShareLink = async (req, res, next) => {
     if (chat.owner != user.id) {
       throw new AppError("Only Owner can generate link", 400);
     }
+    const email_verified = await UserModel.findById(user.id).select(
+      "isMailVerified",
+    );
+    console.log(email_verified);
+    if (!email_verified.isMailVerified) {
+      throw new AppError("Email is Not verified Kindly verify Email", 400);
+    }
     const seq = generateUniqueSeq();
     const link = `${process.env.FRONTEND_URL}/join-chat/${seq}/${chat._id}`;
     chat.shareLink = seq;
@@ -162,7 +184,6 @@ const generateShareLink = async (req, res, next) => {
       link,
     });
   } catch (error) {
-    console.error(error);
 
     next(error);
   }
@@ -198,7 +219,6 @@ const joinChat = async (req, res, next) => {
       message: "Access Updated",
     });
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };
@@ -208,14 +228,20 @@ const addAccess = async (req, res, next) => {
     const { user } = req;
     const { emails } = req.body;
     const { chatId } = req.params;
-    console.log(emails)
+    console.log(emails);
 
     const chat = await verifyAndGetChat(chatId);
 
     if (user.id != chat.owner) {
       throw new AppError("Only Owner can add", 400);
     }
-
+    const email_verified = await UserModel.findById(user.id).select(
+      "isMailVerified",
+    );
+    console.log(email_verified);
+    if (!email_verified.isMailVerified) {
+      throw new AppError("Email is Not verified Kindly verify Email", 400);
+    }
     const allEmails = typeof emails === "string" ? JSON.parse(emails) : emails;
 
     const existingUsers = await UserModel.find({
@@ -232,7 +258,7 @@ const addAccess = async (req, res, next) => {
 
     chat.accessHolders.push(...userIdsToPush);
     await chat.save();
-        const link = `${process.env.FRONTEND_URL}/?chatId=${chat._id}`;
+    const link = `${process.env.FRONTEND_URL}/?chatId=${chat._id}`;
     const emailPromises = existingUsers.map((targetUser) => {
       return sendMail(
         targetUser.email,
@@ -249,7 +275,6 @@ const addAccess = async (req, res, next) => {
       emailNotUpdated: missingEmails,
     });
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };
@@ -267,7 +292,6 @@ const getAllChat = async (req, res, next) => {
       sharedChat,
     });
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };
@@ -285,7 +309,6 @@ const getChatMessage = async (req, res, next) => {
       chat,
     });
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };

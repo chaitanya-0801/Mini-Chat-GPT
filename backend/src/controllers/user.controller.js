@@ -8,6 +8,7 @@ import { jwtToken } from "../utils/generateToken.js";
 import { sendMail } from "../config/nodemailer.js";
 import generateUniqueSeq from "../utils/generateSeq.js";
 import AppError from "../utils/ApiError.js";
+import verifyGoogleToken from "../utils/google.js";
 
 const addNewUser = async (req, res, next) => {
   try {
@@ -72,7 +73,10 @@ const Login = async (req, res, next) => {
     if (!user) {
       throw new AppError("User is not registred", 404);
     }
-
+    if (!user.password)
+    {
+      throw new AppError("Password Expired,Please Reset Password")
+    }
     const checkPass = await bcrypt.compare(password, user.password);
 
     if (!checkPass) {
@@ -125,7 +129,6 @@ const resetPasswordToken = async (req, res, next) => {
       message: "Link Generated",
     });
   } catch (error) {
-    console.error(error);
 
     next(error);
   }
@@ -136,7 +139,7 @@ const changePassword = async (req, res, next) => {
     const { password, confirmPass } = req.body;
     const { token, userId } = req.params;
 
-    const getToken = await passwordResetModel.findOne({ userId: userId});
+    const getToken = await passwordResetModel.findOne({ userId: userId });
 
     if (!getToken || getToken.token != token) {
       throw new AppError("Link Expired", 403);
@@ -158,7 +161,6 @@ const changePassword = async (req, res, next) => {
       message: "Password Updated",
     });
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };
@@ -172,21 +174,27 @@ const sendEmailVerifyLink = async (req, res, next) => {
     }
     const seq = generateUniqueSeq();
 
+        const email_verified = await UserModel.findById(user.id).select(
+      "isMailVerified",
+    );
+    if (email_verified.isMailVerified) {
+      throw new AppError("Email is already verified", 400);
+    }
     const updatedToken = await emailVerifyModel.findOneAndUpdate(
       { userId: user.id },
       { token: seq, createdAt: new Date() },
       { upsert: true, new: true },
     );
-    
-    const link = `${process.env.FRONTEND_URL}/change-password/${seq}/${checkUser._id}`;
-    await sendMail(req.user.email, "Email Verify Link", link);
 
+    const link = `${process.env.FRONTEND_URL}/verify-email/${seq}/${checkUser._id}`;
+    const email = await sendMail(req.user.email, "Email Verify Link", link);
+    console.log(email);
     res.status(200).json({
       success: true,
       message: "Link Generated",
+      link,
     });
   } catch (error) {
-    console.error(error);
 
     next(error);
   }
@@ -214,8 +222,88 @@ const verifyEmail = async (req, res, next) => {
       message: "Verified",
     });
   } catch (error) {
-    console.error(error);
     next(error);
+  }
+};
+
+const googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({
+        success: false,
+        message: "Google credential is required",
+      });
+    }
+
+    // 1. Verify Google token
+    const payload = await verifyGoogleToken(credential);
+
+    // 2. Get Google user information
+    const { sub, name, email, picture, email_verified } = payload;
+
+    if (!email_verified) {
+      return res.status(401).json({
+        success: false,
+        message: "Google email is not verified",
+      });
+    }
+
+    let user = await UserModel.findOne({
+      email,
+    });
+
+    if (!user) {
+      user = await UserModel.create({
+        name,
+        email,
+        // googleId: sub,
+        // avatar: picture
+      });
+    }
+
+    // 6. Generate YOUR application's JWT
+    const token = jwt.sign(
+      {
+        id: user._id,
+        name: user.name,
+        email:user.email
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      },
+    );
+
+    // 7. Send JWT
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+
+      message: "Google login successful",
+      token: token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        // avatar: user.avatar
+      },
+    });
+  } catch (error) {
+    console.error("Google Login Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Google authentication failed",
+    });
   }
 };
 
@@ -226,4 +314,5 @@ export {
   changePassword,
   sendEmailVerifyLink,
   verifyEmail,
+  googleLogin,
 };

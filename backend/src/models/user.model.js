@@ -1,7 +1,5 @@
 import mongoose from "mongoose";
 
-
-
 const userSchema = mongoose.Schema(
   {
     name: {
@@ -18,7 +16,6 @@ const userSchema = mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters long"],
     },
     isMailVerified: {
@@ -29,6 +26,15 @@ const userSchema = mongoose.Schema(
     passwordResetLink: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "PasswordLink",
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+
+    avatar: {
+      type: String,
     },
   },
   {

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import Form from "../components/Form";
+import GoogleButton from "../components/GoogleButton";
 
 const SignUp = () => {
   return (
@@ -26,6 +27,10 @@ const SignUp = () => {
             Sign In
           </Link>
         </p>
+        <div className="text-center text-2xl font-bold p-2 text-white">OR</div>
+        <div className="mt-2">
+        <GoogleButton />
+        </div>
       </div>
     </div>
   );

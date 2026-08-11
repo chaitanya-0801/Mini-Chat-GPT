@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
+import { ChevronDown, ChevronUp, MessageSquare,Plus} from "lucide-react";
 import { getAllChat } from "../../services/chatServices";
 import useChat from "../../hooks/useChat";
 import { useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const Sidebar = () => {
+  const navigate=useNavigate()
   const [searchParams, setSearchParams] = useSearchParams();
   const { setActiveChat,refreshChat } = useChat();
   const [showUserChat, setShowUserChat] = useState(true);
@@ -37,6 +39,19 @@ const Sidebar = () => {
 
       {/* Chats */}
       <div className="flex-1 overflow-y-auto p-3">
+        <div>
+          <button
+            onClick={() => {
+              navigate('/')
+              window.location.reload()
+             }}
+            className="flex w-full items-center justify-between rounded-lg px-3 py-2 hover:bg-zinc-800 transition border border-white"
+          >
+            <span className="font-medium flex gap-2"><Plus/>New Chat</span>
+
+          </button>
+
+        </div>
         {/* Recent Chats */}
         <div>
           <button

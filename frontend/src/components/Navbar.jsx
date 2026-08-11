@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { generateLink, addAccess } from "../services/chatServices";
 import toast from "react-hot-toast";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { sendEmailVerifyLink } from "../services/authServices";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -50,11 +51,12 @@ const Navbar = () => {
         });
       }
     } catch (error) {
-      toast.error("Error while generating link!", {
-        id: toastId,
-      });
-
-      console.error(error);
+      toast.error(
+        error?.response?.data?.message || "Error while generating link!",
+        {
+          id: toastId,
+        },
+      );
     }
   };
   const handleAddAccess = async () => {
@@ -99,8 +101,6 @@ const Navbar = () => {
           );
         });
 
-        console.log(res.data.emailNotUpdated )
-
         setEmails([""]);
         setShowAddAccess(false);
       } else {
@@ -128,7 +128,26 @@ const Navbar = () => {
   const addEmailField = () => {
     setEmails([...emails, ""]);
   };
-
+  const sendEmailLink = async () => {
+    const toastId = toast.loading("Sending Link");
+    try {
+      const res = await sendEmailVerifyLink();
+      console.log(res)
+      if (res?.data?.success) {
+        toast.success("Link Sent", {
+          id: toastId,
+        });
+      }
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || "Error while updating access!",
+        {
+          id: toastId,
+        },
+      );
+      console.error(error);
+    }
+  };
   return (
     <nav className="flex h-16 items-center justify-end gap-3 border-b border-zinc-800 bg-zinc-950 px-6">
       {/* Share Button */}
@@ -207,6 +226,12 @@ const Navbar = () => {
                 className="w-full rounded-lg px-4 py-2 text-left text-red-500 transition hover:bg-zinc-800"
               >
                 Logout
+              </button>
+              <button
+                onClick={sendEmailLink}
+                className="w-full rounded-lg px-4 py-2 text-left text-red-500 transition hover:bg-zinc-800"
+              >
+                Verify Email
               </button>
             </div>
           )}

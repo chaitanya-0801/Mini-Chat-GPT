@@ -8,8 +8,8 @@ export const signup = (data) => {
   return axiosInstance.post("/auth/signup", data);
 };
 
-export const sendEmailVerifyLink = (data) => {
-    return axiosInstance.post('/auth/email-verify-link',data)
+export const sendEmailVerifyLink = () => {
+    return axiosInstance.post('/auth/email-verify-link')
 }
 export const verifyEmail = (token,userId) => {
     return axiosInstance.put(`/auth/verify-email/${token}/${userId}`)
