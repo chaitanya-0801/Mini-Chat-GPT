@@ -1,6 +1,6 @@
-import nodemailer from 'nodemailer'
+import nodemailer from "nodemailer";
 
-export const sendMail = async (email,subject,text) => {
+export const sendMail = async (email, subject, text) => {
   try {
     const transporter = await nodemailer.createTransport({
       host: process.env.SMTP_HOST,
@@ -11,7 +11,7 @@ export const sendMail = async (email,subject,text) => {
       },
     });
     const info = await transporter.sendMail({
-      from: '"ChatSync" <no-reply@yourapp.com>',
+      from: '"ChatGoAI" <no-reply@yourapp.com>',
       to: email,
       subject,
       html: `<b>${text}</b>`,
@@ -24,5 +24,3 @@ export const sendMail = async (email,subject,text) => {
     };
   }
 };
-
-

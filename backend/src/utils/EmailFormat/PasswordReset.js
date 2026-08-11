@@ -5,7 +5,7 @@ export const getPasswordResetEmail = (resetLink) => {
     <head>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Reset Your Password - ChatSync</title>
+      <title>Reset Your Password - ChatGoAI</title>
     </head>
 
     <body style="
@@ -48,7 +48,7 @@ export const getPasswordResetEmail = (resetLink) => {
                     font-size: 28px;
                     color: #111827;
                   ">
-                    ChatSync
+                    ChatGoAI
                   </h1>
 
                   <p style="
@@ -90,7 +90,7 @@ export const getPasswordResetEmail = (resetLink) => {
                     line-height: 1.6;
                   ">
                     We received a request to reset the password
-                    for your <strong>ChatSync</strong> account.
+                    for your <strong>ChatGoAI</strong> account.
                   </p>
 
                   <p style="
@@ -206,7 +206,7 @@ export const getPasswordResetEmail = (resetLink) => {
                     color: #9ca3af;
                     font-size: 12px;
                   ">
-                    © 2026 ChatSync. All rights reserved.
+                    © 2026 ChatGoAI. All rights reserved.
                   </p>
 
                   <p style="

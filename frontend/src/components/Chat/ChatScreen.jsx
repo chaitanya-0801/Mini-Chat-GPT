@@ -301,7 +301,7 @@ const ChatScreen = () => {
               <FormField
                 id="prompt"
                 type="text"
-                placeholder="Message ChatSync..."
+                placeholder="Message ChatGoAI..."
                 register={register}
               />
             </div>

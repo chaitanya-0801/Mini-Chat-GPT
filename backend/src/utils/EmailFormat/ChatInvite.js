@@ -5,7 +5,7 @@ export const getChatInvitationEmail = (ownerName, chatLink) => {
     <head>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Chat Invitation - ChatSync</title>
+      <title>Chat Invitation - ChatGoAI</title>
     </head>
 
     <body style="
@@ -51,7 +51,7 @@ export const getChatInvitationEmail = (ownerName, chatLink) => {
                     font-size: 28px;
                     color: #111827;
                   ">
-                    ChatSync
+                    ChatGoAI
                   </h1>
 
                   <p style="
@@ -93,7 +93,7 @@ export const getChatInvitationEmail = (ownerName, chatLink) => {
                     line-height: 1.6;
                   ">
                     <strong>${ownerName}</strong> has invited you
-                    to join a chat on <strong>ChatSync</strong>.
+                    to join a chat on <strong>ChatGoAI</strong>.
                   </p>
 
                   <!-- Invitation Box -->
@@ -228,7 +228,7 @@ export const getChatInvitationEmail = (ownerName, chatLink) => {
                     color: #9ca3af;
                     font-size: 12px;
                   ">
-                    © 2026 ChatSync. All rights reserved.
+                    © 2026 ChatGoAI. All rights reserved.
                   </p>
 
                   <p style="

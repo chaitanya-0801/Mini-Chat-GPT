@@ -1,6 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
-import cors from 'cors'
+import cors from "cors";
 import cookieParser from "cookie-parser";
 import { connectDB } from "./config/datebase.js";
 import chatRouter from "./routes/chat.routes.js";
@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-const allowedOrigins = ["http://localhost:5173",];
+const allowedOrigins = ["http://localhost:5173"];
 
 app.use(
   cors({
@@ -32,12 +32,12 @@ app.use(
 const PORT = process.env.PORT || 5000;
 
 app.get("/", (req, res) => {
-  res.send("Hello this is backend of mini chat gpt");
+  res.send("Hello this is backend of ChatGoAI");
 });
 
 app.use("/api/chat", chatRouter);
 app.use("/api/auth", authRouter);
-app.use(errorHandler)
+app.use(errorHandler);
 
 connectDB().then(() => {
   app.listen(PORT, () => {

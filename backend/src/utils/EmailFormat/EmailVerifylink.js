@@ -5,7 +5,7 @@ export const getVerificationEmail = (email, verificationLink) => {
     <head>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Verify Your Email - ChatSync</title>
+      <title>Verify Your Email - ChatGoAI</title>
     </head>
 
     <body style="
@@ -46,7 +46,7 @@ export const getVerificationEmail = (email, verificationLink) => {
                     font-size: 28px;
                     color: #111827;
                   ">
-                    ChatSync
+                    ChatGoAI
                   </h1>
 
                   <p style="
@@ -87,7 +87,7 @@ export const getVerificationEmail = (email, verificationLink) => {
                     line-height: 1.6;
                   ">
                     Thanks for creating an account with
-                    <strong>ChatSync</strong>.
+                    <strong>ChatGoAI</strong>.
                     Please verify your email address to activate your account.
                   </p>
 
@@ -178,7 +178,7 @@ export const getVerificationEmail = (email, verificationLink) => {
                     font-size: 13px;
                     line-height: 1.6;
                   ">
-                    If you didn't create a ChatSync account,
+                    If you didn't create a ChatGoAI account,
                     you can safely ignore this email.
                   </p>
 
@@ -200,7 +200,7 @@ export const getVerificationEmail = (email, verificationLink) => {
                     color: #9ca3af;
                     font-size: 12px;
                   ">
-                    © 2026 ChatSync. All rights reserved.
+                    © 2026 ChatGoAI. All rights reserved.
                   </p>
 
                   <p style="
