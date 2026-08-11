@@ -32,7 +32,7 @@ app.use(
 const PORT = process.env.PORT || 5000;
 
 app.get("/", (req, res) => {
-  res.send("Hello this is backend of ChatGoAI");
+  res.send("Hello this is backend of ChatGo AI");
 });
 
 app.use("/api/chat", chatRouter);
