@@ -9,7 +9,7 @@ import { sendMail } from "../config/nodemailer.js";
 import generateUniqueSeq from "../utils/generateSeq.js";
 import AppError from "../utils/ApiError.js";
 import verifyGoogleToken from "../utils/google.js";
-import {getVerificationEmail} from "../utils/EmailFormat/EmailVerifylink.js";
+import { getVerificationEmail } from "../utils/EmailFormat/EmailVerifylink.js";
 import { getPasswordResetEmail } from "../utils/EmailFormat/PasswordReset.js";
 
 const addNewUser = async (req, res, next) => {
@@ -42,9 +42,10 @@ const addNewUser = async (req, res, next) => {
 
     res
       .cookie("token", token, {
-        httpOnly: true,
-        sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+            httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
       })
       .status(201)
       .json({
@@ -75,9 +76,8 @@ const Login = async (req, res, next) => {
     if (!user) {
       throw new AppError("User is not registred", 404);
     }
-    if (!user.password)
-    {
-      throw new AppError("Password Expired,Please Reset Password")
+    if (!user.password) {
+      throw new AppError("Password Expired,Please Reset Password");
     }
     const checkPass = await bcrypt.compare(password, user.password);
 
@@ -90,7 +90,8 @@ const Login = async (req, res, next) => {
     res
       .cookie("token", token, {
         httpOnly: true,
-        sameSite: "strict",
+        secure: true,
+        sameSite: "none",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       })
       .status(200)
@@ -131,7 +132,6 @@ const resetPasswordToken = async (req, res, next) => {
       message: "Link Generated",
     });
   } catch (error) {
-
     next(error);
   }
 };
@@ -176,7 +176,7 @@ const sendEmailVerifyLink = async (req, res, next) => {
     }
     const seq = generateUniqueSeq();
 
-        const email_verified = await UserModel.findById(user.id).select(
+    const email_verified = await UserModel.findById(user.id).select(
       "isMailVerified",
     );
     if (email_verified.isMailVerified) {
@@ -189,7 +189,11 @@ const sendEmailVerifyLink = async (req, res, next) => {
     );
 
     const link = `${process.env.FRONTEND_URL}/verify-email/${seq}/${checkUser._id}`;
-    const email = await sendMail(req.user.email, "Email Verify Link", getVerificationEmail(user.email,link));
+    const email = await sendMail(
+      req.user.email,
+      "Email Verify Link",
+      getVerificationEmail(user.email, link),
+    );
     console.log(email);
     res.status(200).json({
       success: true,
@@ -197,7 +201,6 @@ const sendEmailVerifyLink = async (req, res, next) => {
       link,
     });
   } catch (error) {
-
     next(error);
   }
 };
@@ -270,7 +273,7 @@ const googleLogin = async (req, res) => {
       {
         id: user._id,
         name: user.name,
-        email:user.email
+        email: user.email,
       },
       process.env.JWT_SECRET,
       {
@@ -281,9 +284,8 @@ const googleLogin = async (req, res) => {
     // 7. Send JWT
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-
+      secure: true,
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
