@@ -7,16 +7,14 @@ import rehypeHighlight from "rehype-highlight";
 import { Brain, User } from "lucide-react";
 import FormField from "../FormField";
 import useChat from "../../hooks/useChat";
-import {
-  askQuestion,
-  getAllMessage,
-  joinChat,
-} from "../../services/chatServices";
+import { getAllMessage, joinChat } from "../../services/chatServices";
 import { useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import "highlight.js/styles/github-dark.css";
 import { useNavigate } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";
+
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 const ChatScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -126,48 +124,146 @@ const ChatScreen = () => {
 
   // Submit
   const onSubmit = async (data) => {
-    if (!data.prompt.trim()) return;
+    const prompt = data.prompt?.trim();
+
+    if (!prompt || sent) return;
+
+    let tempAIMessage = null;
 
     try {
       setSent(true);
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          ownerType: "user",
-          content: data.prompt,
-        },
-      ]);
+      // Add user message immediately
+      const userMessage = {
+        _id: crypto.randomUUID(),
+        ownerType: "user",
+        content: prompt,
+      };
 
-      reset({
-        prompt: "",
+      // Add empty AI message immediately
+      tempAIMessage = {
+        _id: crypto.randomUUID(),
+        ownerType: "AI",
+        content: "",
+        streaming: true,
+      };
+
+      setMessages((prev) => [...prev, userMessage, tempAIMessage]);
+
+      reset();
+
+      // Start streaming request
+      const response = await fetch(`${API_URL}/chat/ask/${chatId || ""}`, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        credentials: "include",
+
+        body: JSON.stringify({
+          prompt,
+        }),
       });
 
-      const res = await askQuestion(data, chatId);
+      if (!response.ok) {
+        throw new Error("Failed to generate AI response");
+      }
 
-      const aiMessage = res?.data?.data?.assistantMessage?.content;
+      if (!response.body) {
+        throw new Error("Response stream is not available");
+      }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          ownerType: "AI",
-          content: aiMessage,
-        },
-      ]);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
 
-      const newChatId = res?.data?.data?.chat?._id;
+      let buffer = "";
 
-      if (newChatId) {
-        setChatId(newChatId);
+      while (true) {
+        const { value, done } = await reader.read();
 
-        setSearchParams({
-          chatId: newChatId,
+        if (done) break;
+
+        // Convert bytes to text
+        buffer += decoder.decode(value, {
+          stream: true,
         });
 
-        setRefreshChat((prev) => !prev);
+        // SSE events are separated by \n\n
+        const events = buffer.split("\n\n");
+
+        // Keep incomplete event for next chunk
+        buffer = events.pop();
+
+        for (const event of events) {
+          if (!event.startsWith("data: ")) continue;
+
+          const jsonData = event.replace("data: ", "");
+
+          let parsedData;
+
+          try {
+            parsedData = JSON.parse(jsonData);
+          } catch (error) {
+            console.error("SSE parsing error:", error);
+            continue;
+          }
+
+          // AI text chunk
+          if (parsedData.type === "text") {
+            setMessages((prev) =>
+              prev.map((message) =>
+                message._id === tempAIMessage._id
+                  ? {
+                      ...message,
+                      content: message.content + parsedData.text,
+                    }
+                  : message,
+              ),
+            );
+          }
+
+          // Stream finished
+          if (parsedData.type === "done") {
+            const newChatId = parsedData.chatId;
+
+            if (newChatId) {
+              setChatId(newChatId);
+
+              setSearchParams({
+                chatId: newChatId,
+              });
+
+              setRefreshChat((prev) => !prev);
+            }
+
+            // Replace temporary AI ID with real MongoDB ID
+            setMessages((prev) =>
+              prev.map((message) =>
+                message._id === tempAIMessage._id
+                  ? {
+                      ...message,
+                      _id: parsedData.assistantMessage?._id || message._id,
+                      streaming: false,
+                    }
+                  : message,
+              ),
+            );
+          }
+        }
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
+
+      toast.error(error.message || "Failed to generate AI response");
+
+      // Remove temporary AI message
+      if (tempAIMessage) {
+        setMessages((prev) =>
+          prev.filter((message) => message._id !== tempAIMessage._id),
+        );
+      }
     } finally {
       setSent(false);
     }
@@ -235,12 +331,26 @@ const ChatScreen = () => {
                     prose-code:text-sky-400
                   "
                   >
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeHighlight]}
-                    >
-                      {msg.content}
-                    </ReactMarkdown>
+                    {msg.streaming && !msg.content ? (
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-white"></span>
+
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-white [animation-delay:.2s]"></span>
+
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-white [animation-delay:.4s]"></span>
+
+                        <span className="ml-2 text-sm text-zinc-400">
+                          AI is thinking...
+                        </span>
+                      </div>
+                    ) : (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeHighlight]}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    )}
                   </div>
 
                   {/* Copy Button */}
@@ -268,7 +378,7 @@ const ChatScreen = () => {
             ))}
 
             {/* Thinking */}
-            {sent && (
+            {/* {sent && (
               <div className="flex items-end gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800">
                   <Brain size={20} />
@@ -286,7 +396,7 @@ const ChatScreen = () => {
                   </div>
                 </div>
               </div>
-            )}
+            )} */}
 
             <div ref={bottomRef} />
           </div>

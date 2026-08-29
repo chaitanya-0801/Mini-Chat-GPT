@@ -17,3 +17,17 @@ export const generateResponse = async (contents) => {
     throw error;
   }
 };
+
+export const generateResponseStream = async (contents) => {
+  try {
+    const responseStream = await ai.models.generateContentStream({
+      model: "gemini-3.6-flash",
+      contents,
+    });
+
+    return responseStream;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};

@@ -3,12 +3,108 @@ import mongoose from "mongoose";
 import ChatModel from "../models/chat.model.js";
 import MessageModel from "../models/message.model.js";
 import UserModel from "../models/user.model.js";
-import { generateResponse } from "../utils/generateResponse.js";
+import { generateResponse,generateResponseStream } from "../utils/generateResponse.js";
 import { verifyAndGetChat } from "../utils/verifyChat.js";
 import generateUniqueSeq from "../utils/generateSeq.js";
 import { sendMail } from "../config/nodemailer.js";
 import AppError from "../utils/ApiError.js";
 import { getChatInvitationEmail } from "../utils/EmailFormat/ChatInvite.js";
+
+
+
+
+// const askQuestion = async (req, res, next) => {
+//   try {
+//     const { user } = req;
+//     const { prompt } = req.body;
+//     const { chatId } = req.params;
+
+//     let chat;
+
+//     if (!chatId) {
+//       const aiResponse = await generateResponse(`Genrtae a single  name for chat with following prompt do not give any other text with that    ${prompt}`);
+//       console.log(aiResponse)
+//       const noOfChats = await ChatModel.countDocuments({
+//         owner: user.id,
+//       });
+
+//       chat = await ChatModel.create({
+//         name: aiResponse,
+//         owner: user.id,
+//       });
+//     } else {
+//       chat = await ChatModel.findById(chatId).populate("messages");
+
+//       if (!chat) {
+//         throw new AppError("Chat Not Found", 404);
+//       }
+//     }
+
+//     const contents = chat.messages.map((message) => ({
+//       role: message.ownerType === "user" ? "user" : "model",
+//       parts: [
+//         {
+//           text: message.content,
+//         },
+//       ],
+//     }));
+
+//     // Add current prompt
+//     contents.push({
+//       role: "user",
+//       parts: [
+//         {
+//           text: prompt,
+//         },
+//       ],
+//     });
+
+//     // Generate AI response
+//     const aiResponse = await generateResponse(contents);
+
+//     // Save user message
+//     const userMessage = await MessageModel.create({
+//       content: prompt,
+//       ownerType: "user",
+//       user: user.id,
+//     });
+
+//     // Save AI message
+//     const assistantMessage = await MessageModel.create({
+//       content: aiResponse,
+//       ownerType: "AI",
+//       user: user.id,
+//     });
+
+//     // Update chat
+//     chat = await ChatModel.findByIdAndUpdate(
+//       chat._id,
+//       {
+//         $push: {
+//           messages: {
+//             $each: [userMessage._id, assistantMessage._id],
+//           },
+//         },
+//       },
+//       {
+//         new: true,
+//       },
+//     ).populate("messages");
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Response generated successfully",
+//       data: {
+//         chat,
+//         userMessage,
+//         assistantMessage,
+//       },
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
 
 const askQuestion = async (req, res, next) => {
   try {
@@ -18,15 +114,19 @@ const askQuestion = async (req, res, next) => {
 
     let chat;
 
+    // -----------------------------
+    // Create or get chat
+    // -----------------------------
     if (!chatId) {
-      const aiResponse = await generateResponse(`Genrtae a single  name for chat with following prompt do not give any other text with that    ${prompt}`);
-      console.log(aiResponse)
-      const noOfChats = await ChatModel.countDocuments({
-        owner: user.id,
-      });
+      const chatName = await generateResponse(
+        `Generate a single short name for a chat based on the following prompt.
+        Do not return anything except the chat name.
+        
+        Prompt: ${prompt}`,
+      );
 
       chat = await ChatModel.create({
-        name: aiResponse,
+        name: chatName.trim(),
         owner: user.id,
       });
     } else {
@@ -37,8 +137,21 @@ const askQuestion = async (req, res, next) => {
       }
     }
 
+    // -----------------------------
+    // Save user message FIRST
+    // -----------------------------
+    const userMessage = await MessageModel.create({
+      content: prompt,
+      ownerType: "user",
+      user: user.id,
+    });
+
+    // -----------------------------
+    // Build previous conversation
+    // -----------------------------
     const contents = chat.messages.map((message) => ({
       role: message.ownerType === "user" ? "user" : "model",
+
       parts: [
         {
           text: message.content,
@@ -46,7 +159,7 @@ const askQuestion = async (req, res, next) => {
       ],
     }));
 
-    // Add current prompt
+    // Add current user message
     contents.push({
       role: "user",
       parts: [
@@ -56,31 +169,62 @@ const askQuestion = async (req, res, next) => {
       ],
     });
 
-    // Generate AI response
-    const aiResponse = await generateResponse(contents);
-
-    // Save user message
-    const userMessage = await MessageModel.create({
-      content: prompt,
-      ownerType: "user",
-      user: user.id,
+    // -----------------------------
+    // Update chat with user message
+    // -----------------------------
+    await ChatModel.findByIdAndUpdate(chat._id, {
+      $push: {
+        messages: userMessage._id,
+      },
     });
 
-    // Save AI message
+    // -----------------------------
+    // SSE Headers
+    // -----------------------------
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    // -----------------------------
+    // Start Gemini Stream
+    // -----------------------------
+    const stream = await generateResponseStream(contents);
+
+    let fullResponse = "";
+
+    for await (const chunk of stream) {
+      const text = chunk.text;
+
+      if (!text) continue;
+
+      fullResponse += text;
+
+      // Send chunk to frontend
+      res.write(
+        `data: ${JSON.stringify({
+          type: "text",
+          text,
+        })}\n\n`,
+      );
+    }
+
+    // -----------------------------
+    // Save complete AI message
+    // -----------------------------
     const assistantMessage = await MessageModel.create({
-      content: aiResponse,
+      content: fullResponse,
       ownerType: "AI",
       user: user.id,
     });
 
-    // Update chat
+    // -----------------------------
+    // Add AI message to chat
+    // -----------------------------
     chat = await ChatModel.findByIdAndUpdate(
       chat._id,
       {
         $push: {
-          messages: {
-            $each: [userMessage._id, assistantMessage._id],
-          },
+          messages: assistantMessage._id,
         },
       },
       {
@@ -88,15 +232,19 @@ const askQuestion = async (req, res, next) => {
       },
     ).populate("messages");
 
-    return res.status(200).json({
-      success: true,
-      message: "Response generated successfully",
-      data: {
-        chat,
+    // -----------------------------
+    // Tell frontend stream is done
+    // -----------------------------
+    res.write(
+      `data: ${JSON.stringify({
+        type: "done",
+        chatId: chat._id,
         userMessage,
         assistantMessage,
-      },
-    });
+      })}\n\n`,
+    );
+
+    res.end();
   } catch (error) {
     next(error);
   }
