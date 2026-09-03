@@ -34,7 +34,7 @@ const Sidebar = () => {
     <aside className="w-72 h-screen bg-zinc-900 text-white border-r border-zinc-800 flex flex-col">
       {/* Logo */}
       <div className="px-6 py-5 text-xl font-bold border-b border-zinc-800">
-        ChatGPT
+        ChatGo AI
       </div>
 
       {/* Chats */}
