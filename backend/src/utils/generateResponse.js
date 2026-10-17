@@ -21,7 +21,7 @@ export const generateResponse = async (contents) => {
 export const generateResponseStream = async (contents) => {
   try {
     const responseStream = await ai.models.generateContentStream({
-      model: "gemini-3.6-flash",
+      model: "gemini-3.8-flash",
       contents,
     });
 
