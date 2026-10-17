@@ -188,7 +188,8 @@ const askQuestion = async (req, res, next) => {
     // -----------------------------
     // Start Gemini Stream
     // -----------------------------
-    const stream = await generateResponseStream(contents);
+    const stream = await generateResponseStream(contents,true);
+    // const stream = await generateResponseStream(contents);
 
     let fullResponse = "";
 
