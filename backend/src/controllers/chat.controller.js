@@ -3,7 +3,8 @@ import mongoose from "mongoose";
 import ChatModel from "../models/chat.model.js";
 import MessageModel from "../models/message.model.js";
 import UserModel from "../models/user.model.js";
-import { generateResponse,generateResponseStream } from "../utils/generateResponse.js";
+// import { generateResponse,generateResponseStream } from "../utils/generateResponse.js";
+import { generateResponse } from "../utils/generateResponse.js";
 import { verifyAndGetChat } from "../utils/verifyChat.js";
 import generateUniqueSeq from "../utils/generateSeq.js";
 import { sendMail } from "../config/nodemailer.js";
@@ -188,7 +189,7 @@ const askQuestion = async (req, res, next) => {
     // -----------------------------
     // Start Gemini Stream
     // -----------------------------
-    const stream = await generateResponseStream(contents,true);
+    const stream = await generateResponse(contents,true);
     // const stream = await generateResponseStream(contents);
 
     let fullResponse = "";
