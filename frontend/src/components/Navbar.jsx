@@ -1,252 +1,203 @@
-import { User, Share, Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { Menu, Share, Users, LogOut, Mail, ChevronDown, X } from "lucide-react";
+import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 import { generateLink, addAccess } from "../services/chatServices";
-import toast from "react-hot-toast";
-import { useSearchParams, useNavigate } from "react-router-dom";
 import { sendEmailVerifyLink } from "../services/authServices";
-
-const Navbar = () => {
+import useUser from "../hooks/useUser";
+import ThemeToggle from "./ThemeToggle";
+import toast from "react-hot-toast";
+import api from "../services/apiInstance";
+export default function Navbar({ onMenu }) {
+  const [params] = useSearchParams();
+  const routeParams = useParams();
+  const id =
+    params.get("chatId") || (!routeParams.seq ? routeParams.chatId : null);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-
-  const [user, setUser] = useState(null);
-  const [showMenu, setShowMenu] = useState(false);
-  const [showAddAccess, setShowAddAccess] = useState(false);
-  const [emails, setEmails] = useState([""]);
-
-  const menuRef = useRef(null);
-
+  const { setToken, setUser } = useUser();
+  const [user] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user"));
+    } catch {
+      return null;
+    }
+  });
+  const [menu, setMenu] = useState(false);
+  const [invite, setInvite] = useState(false);
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ref = useRef(null);
+  const dialog = useRef(null);
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    const close = (e) => {
+      if (!ref.current?.contains(e.target)) setMenu(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
   }, []);
-
-  const handleLogout = () => {
-    localStorage.clear();
-    setShowMenu(!showMenu);
-    navigate("/login");
-  };
-
-  const generateLinkAndCopy = async () => {
-    const chatId = searchParams.get("chatId");
-
-    if (!chatId) {
-      toast.error("No chat selected.");
-      return;
-    }
-
-    const toastId = toast.loading("Generating Link...");
-
+  useEffect(() => {
+    if (invite) dialog.current?.showModal();
+    else dialog.current?.close();
+  }, [invite]);
+  const run = async (fn) => {
+    setBusy(true);
     try {
-      const res = await generateLink(chatId);
-
-      if (res?.data?.success) {
-        await navigator.clipboard.writeText(res.data.link);
-
-        toast.success("Link Copied!", {
-          id: toastId,
-        });
-      }
-    } catch (error) {
+      await fn();
+    } catch (e) {
       toast.error(
-        error?.response?.data?.message || "Error while generating link!",
-        {
-          id: toastId,
-        },
+        e.response?.data?.message ||
+          e.message ||
+          "Something went wrong. Try again.",
       );
-    }
-  };
-  const handleAddAccess = async () => {
-    const chatId = searchParams.get("chatId");
-
-    if (!chatId) {
-      toast.error("No chat selected.");
-      return;
-    }
-
-    // Remove empty emails
-    const validEmails = emails.map((email) => email.trim()).filter(Boolean);
-
-    if (validEmails.length === 0) {
-      toast.error("Please enter at least one email.");
-      return;
-    }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    const invalidEmail = validEmails.find((email) => !emailRegex.test(email));
-
-    if (invalidEmail) {
-      toast.error(`${invalidEmail} is not a valid email.`);
-      return;
-    }
-
-    const toastId = toast.loading("Updating Access...");
-
-    try {
-      const res = await addAccess(chatId, validEmails);
-
-      if (res?.data?.success) {
-        toast.success("Access Updated", {
-          id: toastId,
-        });
-
-        (res.data.emailNotUpdated || []).forEach((email) => {
-          toast.error(
-            `${email} is not registered on the platform. Access not updated.`,
-          );
-        });
-
-        setEmails([""]);
-        setShowAddAccess(false);
-      } else {
-        toast.error("Failed to update access.", {
-          id: toastId,
-        });
-      }
-    } catch (error) {
-      toast.error(
-        error?.response?.data?.message || "Error while updating access!",
-        {
-          id: toastId,
-        },
-      );
-      console.error(error);
-    }
-  };
-
-  const handleEmailChange = (index, value) => {
-    const updated = [...emails];
-    updated[index] = value;
-    setEmails(updated);
-  };
-
-  const addEmailField = () => {
-    setEmails([...emails, ""]);
-  };
-  const sendEmailLink = async () => {
-    const toastId = toast.loading("Sending Link");
-    try {
-      const res = await sendEmailVerifyLink();
-      console.log(res)
-      if (res?.data?.success) {
-        toast.success("Link Sent", {
-          id: toastId,
-        });
-      }
-    } catch (error) {
-      toast.error(
-        error?.response?.data?.message || "Error while updating access!",
-        {
-          id: toastId,
-        },
-      );
-      console.error(error);
+    } finally {
+      setBusy(false);
     }
   };
   return (
-    <nav className="flex h-16 items-center justify-end gap-3 border-b border-zinc-800 bg-zinc-950 px-6">
-      {/* Share Button */}
-      <button
-        onClick={generateLinkAndCopy}
-        className="flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-white transition hover:bg-zinc-800"
-      >
-        <Share size={18} />
-        Share
-      </button>
-      <button
-        onClick={() => setShowAddAccess((prev) => !prev)}
-        className="flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-white transition hover:bg-zinc-800"
-      >
-        <Plus size={18} />
-        Add Access
-      </button>
-      {showAddAccess && (
-        <div className="absolute right-50 top-15 mt-2 w-40 rounded-xl border border-zinc-700 bg-zinc-900 p-2 shadow-xl text-white">
-          <h2 className="mb-3 font-semibold">Give Access</h2>
-
-          {emails.map((email, index) => (
-            <input
-              key={index}
-              type="email"
-              placeholder="Enter email"
-              value={email}
-              onChange={(e) => handleEmailChange(index, e.target.value)}
-              className="mb-2 w-full rounded-lg border border-zinc-600 bg-transparent p-2 outline-none"
-            />
-          ))}
-
+    <nav className="workspace-nav">
+      <div className="workspace-title">
+        <button
+          className="icon-button mobile-menu"
+          aria-label="Open conversations"
+          onClick={onMenu}
+        >
+          <Menu size={21} />
+        </button>
+        <span>
+          Workspace <span className="model-badge">Gemini</span>
+        </span>
+      </div>
+      <div className="workspace-actions">
+        <ThemeToggle />
+        <button
+          className="subtle-button"
+          disabled={!id || busy}
+          title={!id ? "Select a conversation first" : "Copy sharing link"}
+          onClick={() =>
+            run(async () => {
+              const r = await generateLink(id);
+              await navigator.clipboard.writeText(r.data.link);
+              toast.success("Sharing link copied");
+            })
+          }
+        >
+          <Share size={16} />
+          <span>Share</span>
+        </button>
+        <button
+          className="subtle-button"
+          disabled={!id}
+          onClick={() => setInvite(true)}
+        >
+          <Users size={16} />
+          <span>Invite</span>
+        </button>
+        <div className="profile-wrap" ref={ref}>
           <button
-            onClick={addEmailField}
-            className="mb-3 flex items-center gap-2 rounded-lg border px-3 py-2 hover:bg-zinc-800"
+            className="profile-button"
+            aria-label="Account menu"
+            aria-expanded={menu}
+            onClick={() => setMenu(!menu)}
           >
-            <Plus size={18} />
-            Add Email
+            <span className="avatar">
+              {(user?.name || "U").slice(0, 1).toUpperCase()}
+            </span>
+            <ChevronDown size={14} />
           </button>
-
-          <button
-            onClick={handleAddAccess}
-            className="w-full rounded-lg bg-blue-600 py-2 text-white hover:bg-blue-700"
-          >
-            Add Access
-          </button>
-        </div>
-      )}
-
-      {/* Profile */}
-      {user ? (
-        <div className="relative" ref={menuRef}>
-          <div
-            onClick={() => setShowMenu((prev) => !prev)}
-            className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 transition hover:bg-zinc-800"
-          >
-            <img
-              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                user.name,
-              )}&background=2563eb&color=fff`}
-              alt={user.name}
-              className="h-10 w-10 rounded-full"
-            />
-
-            <div>
-              <p className="text-sm font-semibold text-white">{user.name}</p>
-
-              <p className="text-xs text-zinc-400">{user.email}</p>
-            </div>
-          </div>
-
-          {showMenu && (
-            <div className="absolute right-0 mt-2 w-40 rounded-xl border border-zinc-700 bg-zinc-900 p-2 shadow-xl">
+          {menu && (
+            <div className="profile-menu">
+              <strong>{user?.name || "Your account"}</strong>
+              <small>{user?.email}</small>
               <button
-                onClick={handleLogout}
-                className="w-full rounded-lg px-4 py-2 text-left text-red-500 transition hover:bg-zinc-800"
+                disabled={busy}
+                onClick={() =>
+                  run(async () => {
+                    await sendEmailVerifyLink();
+                    toast.success("Verification email sent");
+                  })
+                }
               >
-                Logout
+                <Mail size={16} /> Verify email
               </button>
               <button
-                onClick={sendEmailLink}
-                className="w-full rounded-lg px-4 py-2 text-left text-red-500 transition hover:bg-zinc-800"
+                disabled={busy}
+                onClick={() =>
+                  run(async () => {
+                    await api.post("/auth/logout");
+                    localStorage.removeItem("token");
+                    localStorage.removeItem("user");
+                    setToken(null);
+                    setUser(null);
+                    navigate("/login");
+                  })
+                }
               >
-                Verify Email
+                <LogOut size={16} /> Log out
               </button>
             </div>
           )}
         </div>
-      ) : (
-        <button
-          onClick={() => navigate("/login")}
-          className="flex items-center gap-2 rounded-lg border border-zinc-700 px-4 py-2 text-white hover:bg-zinc-900"
+      </div>
+      <dialog
+        ref={dialog}
+        className="invite-dialog"
+        onCancel={() => setInvite(false)}
+        onClose={() => setInvite(false)}
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            run(async () => {
+              const emails = email
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+              if (
+                !emails.length ||
+                emails.some((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))
+              )
+                throw new Error(
+                  "Enter valid email addresses, separated by commas.",
+                );
+              const r = await addAccess(id, emails);
+              if (r.data.emailNotUpdated?.length)
+                toast.error(
+                  `Access not updated: ${r.data.emailNotUpdated.join(", ")}`,
+                );
+              else toast.success("Access updated");
+              setInvite(false);
+              setEmail("");
+            });
+          }}
         >
-          <User size={18} />
-          Login
-        </button>
-      )}
+          <div className="dialog-heading">
+            <h2>Think better, together.</h2>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Close invitation"
+              onClick={() => setInvite(false)}
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <p>
+            Invite registered users to this conversation. Separate email
+            addresses with commas.
+          </p>
+          <label htmlFor="invite-email">Email addresses</label>
+          <input
+            id="invite-email"
+            autoFocus
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="teammate@example.com"
+            required
+          />
+          <button className="button" disabled={busy}>
+            {busy ? "Updating access…" : "Give access"}
+          </button>
+        </form>
+      </dialog>
     </nav>
   );
-};
-
-export default Navbar;
+}

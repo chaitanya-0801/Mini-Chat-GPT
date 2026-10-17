@@ -1,20 +1,23 @@
+import { useState } from "react";
 import Sidebar from "../components/Chat/Sidebar";
 import ChatScreen from "../components/Chat/ChatScreen";
 import Navbar from "../components/Navbar";
-
-const Chat = () => {
+export default function Chat() {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="flex h-screen bg-zinc-950">
-      {/* Sidebar */}
-      <Sidebar />
-
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col">
-        <Navbar />
+    <div className="chat-layout">
+      {open && (
+        <button
+          className="sidebar-backdrop"
+          aria-label="Close sidebar"
+          onClick={() => setOpen(false)}
+        />
+      )}
+      <Sidebar open={open} onClose={() => setOpen(false)} />
+      <div className="chat-main">
+        <Navbar onMenu={() => setOpen(!open)} />
         <ChatScreen />
       </div>
     </div>
   );
-};
-
-export default Chat;
+}

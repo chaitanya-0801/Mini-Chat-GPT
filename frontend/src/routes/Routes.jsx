@@ -1,6 +1,6 @@
 import { createBrowserRouter } from "react-router-dom";
-// import App from "../App";
-import Chat from "../pages/Chat";
+import Home from "../pages/Home";
+import ChatPage from "../pages/ChatPage";
 import Login from "../pages/Login";
 import SignUp from "../pages/SignUp";
 import ChangePassword from "../pages/ChangePassword";
@@ -8,21 +8,22 @@ import ProtectedRoutes from "./ProtectedRoutes";
 import VerifyEmail from "../pages/VerifyEmail";
 
 const router = createBrowserRouter([
+  { path: "/", element: <Home /> },
   {
     path: "/",
     element: <ProtectedRoutes />,
     children: [
       {
-        path: "",
-        element: <Chat />,
+        path: "/chat",
+        element: <ChatPage />,
       },
       {
         path: "/:chatId",
-        element: <Chat />,
+        element: <ChatPage />,
       },
       {
-        path: "/join-chat/:chatId/:seq",
-        element: <Chat />,
+        path: "/join-chat/:seq/:chatId",
+        element: <ChatPage />,
       },
     ],
   },
@@ -44,7 +45,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/verify-email/:token/:userId",
-    element: <VerifyEmail/>,
+    element: <VerifyEmail />,
   },
 ]);
 

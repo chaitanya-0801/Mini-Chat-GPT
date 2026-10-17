@@ -12,6 +12,10 @@ import {
 } from "../controllers/user.controller.js";
 import authUser from "../middlewares/auth.middleware.js";
 
+authRouter.post("/logout", (req, res) => {
+  res.clearCookie("token", { httpOnly: true, secure: true, sameSite: "none" });
+  res.json({ success: true, message: "Logged out" });
+});
 authRouter.post("/signup", addNewUser);
 authRouter.post('/google',googleLogin)
 authRouter.post("/login", Login);

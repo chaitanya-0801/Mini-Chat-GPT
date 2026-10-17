@@ -19,6 +19,16 @@ const FormField = ({
 
       <input
         id={id}
+        aria-label={label || placeholder}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${id}-error` : undefined}
+        autoComplete={
+          type === "password"
+            ? "current-password"
+            : type === "email"
+              ? "email"
+              : "off"
+        }
         type={type}
         placeholder={placeholder}
         {...register(id, validation)}
@@ -40,7 +50,11 @@ const FormField = ({
           focus:ring-blue-500/30
         "
       />
-      {error && <span className="text-red-500 text-xs">{error.message}</span>}
+      {error && (
+        <span id={`${id}-error`} role="alert" className="text-red-500 text-xs">
+          {error.message}
+        </span>
+      )}
     </div>
   );
 };

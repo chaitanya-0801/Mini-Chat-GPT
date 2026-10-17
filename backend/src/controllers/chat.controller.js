@@ -3,16 +3,16 @@ import mongoose from "mongoose";
 import ChatModel from "../models/chat.model.js";
 import MessageModel from "../models/message.model.js";
 import UserModel from "../models/user.model.js";
-import { generateResponse,generateResponseStream } from "../utils/generateResponse.js";
+import {
+  generateResponse,
+  generateResponseStream,
+} from "../utils/generateResponse.js";
 // import { generateResponse } from "../utils/generateResponse.js";
 import { verifyAndGetChat } from "../utils/verifyChat.js";
 import generateUniqueSeq from "../utils/generateSeq.js";
 import { sendMail } from "../config/nodemailer.js";
 import AppError from "../utils/ApiError.js";
 import { getChatInvitationEmail } from "../utils/EmailFormat/ChatInvite.js";
-
-
-
 
 // const askQuestion = async (req, res, next) => {
 //   try {
@@ -106,13 +106,14 @@ import { getChatInvitationEmail } from "../utils/EmailFormat/ChatInvite.js";
 //   }
 // };
 
-
 const askQuestion = async (req, res, next) => {
   try {
     const { user } = req;
     const { prompt } = req.body;
     const { chatId } = req.params;
 
+    if (typeof prompt !== "string" || !prompt.trim())
+      throw new AppError("A prompt is required", 400);
     let chat;
 
     // -----------------------------
@@ -136,6 +137,11 @@ const askQuestion = async (req, res, next) => {
       if (!chat) {
         throw new AppError("Chat Not Found", 404);
       }
+      if (
+        String(chat.owner) !== user.id &&
+        !chat.accessHolders.some((id) => String(id) === user.id)
+      )
+        throw new AppError("Access denied", 403);
     }
 
     // -----------------------------
@@ -248,6 +254,10 @@ const askQuestion = async (req, res, next) => {
 
     res.end();
   } catch (error) {
+    if (res.headersSent) {
+      res.write(`data: ${JSON.stringify({ type: "error", message: "The response was interrupted. Please try again." })}\n\n`);
+      return res.end();
+    }
     next(error);
   }
 };
@@ -257,6 +267,8 @@ const pinUnpinChat = async (req, res, next) => {
     const { user } = req;
     const { chatId } = req.params;
     const chat = await verifyAndGetChat(chatId);
+    if (String(chat.owner) !== user.id)
+      throw new AppError("Only the owner can update this conversation", 403);
     const email_verified = await UserModel.findById(user.id).select(
       "isMailVerified",
     );
@@ -275,7 +287,6 @@ const pinUnpinChat = async (req, res, next) => {
       chat,
     });
   } catch (error) {
-
     next(error);
   }
 };
@@ -284,6 +295,8 @@ const archiveChat = async (req, res, next) => {
     const { user } = req;
     const { chatId } = req.params;
     const chat = await verifyAndGetChat(chatId);
+    if (String(chat.owner) !== user.id)
+      throw new AppError("Only the owner can update this conversation", 403);
 
     const email_verified = await UserModel.findById(user.id).select(
       "isMailVerified",
@@ -304,7 +317,6 @@ const archiveChat = async (req, res, next) => {
       chat,
     });
   } catch (error) {
-
     next(error);
   }
 };
@@ -335,7 +347,6 @@ const generateShareLink = async (req, res, next) => {
       link,
     });
   } catch (error) {
-
     next(error);
   }
 };
@@ -379,7 +390,6 @@ const addAccess = async (req, res, next) => {
     const { user } = req;
     const { emails } = req.body;
     const { chatId } = req.params;
-    console.log(emails);
 
     const chat = await verifyAndGetChat(chatId);
 
@@ -414,7 +424,7 @@ const addAccess = async (req, res, next) => {
       return sendMail(
         targetUser.email,
         `New Chat Shared by ${req.user.name}`,
-        getChatInvitationEmail(req.user.name,link),
+        getChatInvitationEmail(req.user.name, link),
       );
     });
 
@@ -453,8 +463,13 @@ const getChatMessage = async (req, res, next) => {
 
     const chat = await ChatModel.findById(chatId).populate("messages");
     if (!chat) {
-      throw new AppError("Internal Error", 500);
+      throw new AppError("Chat not found", 404);
     }
+    if (
+      String(chat.owner) !== req.user.id &&
+      !chat.accessHolders.some((id) => String(id) === req.user.id)
+    )
+      throw new AppError("Access denied", 403);
     res.status(200).json({
       success: true,
       chat,

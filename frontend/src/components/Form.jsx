@@ -3,19 +3,20 @@ import FormField from "./FormField";
 import CTAButton from "./CTAButton";
 import toast from "react-hot-toast";
 import { login, signup } from "../services/authServices";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import useUser from "../hooks/useUser";
 
 const Form = ({ formType }) => {
-  const navigate=useNavigate()
+  const navigate = useNavigate();
+  const location = useLocation();
   const { setToken, setUser } = useUser();
   const {
     register,
     handleSubmit,
     reset,
-    watch,
-    formState: { errors },
+    getValues,
+    formState: { errors, isSubmitting },
   } = useForm();
   const onSubmit = async (data) => {
     const toastId = toast.loading(
@@ -26,21 +27,23 @@ const Form = ({ formType }) => {
       if (formType !== "signup") {
         const res = await login(data);
         if (res?.data?.success) {
-          localStorage.setItem('token',res?.data?.token)
+          localStorage.setItem("token", res?.data?.token);
           setToken(res?.data?.token);
           setUser(res?.data?.user);
-          const user=res?.data?.user
-    localStorage.setItem("user", JSON.stringify(user));
+          const user = res?.data?.user;
+          localStorage.setItem("user", JSON.stringify(user));
           toast.success("Login Successful", { id: toastId });
-          navigate('/')
+          navigate(location.state?.from || "/chat" + window.location.search);
         }
       } else {
         const res = await signup(data);
         if (res?.data?.success) {
-          localStorage.setItem('token',res?.data?.token)
+          localStorage.setItem("token", res?.data?.token);
           setToken(res?.data?.token);
           setUser(res?.data?.user);
+          localStorage.setItem("user", JSON.stringify(res.data.user));
           toast.success("Account Created Successfully", { id: toastId });
+          navigate("/chat" + window.location.search);
         }
       }
       reset();
@@ -106,7 +109,7 @@ const Form = ({ formType }) => {
             validation={{
               required: "Please confirm your password",
               validate: (value) =>
-                value === watch("password") || "Passwords do not match",
+                value === getValues("password") || "Passwords do not match",
             }}
             register={register}
             error={errors.confirmPass}
@@ -115,6 +118,7 @@ const Form = ({ formType }) => {
 
         <CTAButton
           text={formType === "signup" ? "Sign Up" : "Log In"}
+          disabled={isSubmitting}
           type="submit"
         />
       </form>

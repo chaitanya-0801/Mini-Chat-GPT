@@ -10,7 +10,17 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <Toaster position="top-center" reverseOrder={false} />
+    <Toaster
+      position="top-center"
+      toastOptions={{
+        style: {
+          background: "var(--surface)",
+          color: "var(--text)",
+          border: "1px solid var(--border)",
+        },
+      }}
+      reverseOrder={false}
+    />
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <AuthProvider>
         <ChatProvider>

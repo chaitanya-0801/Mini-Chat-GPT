@@ -1,39 +1,19 @@
-import { Link } from "react-router-dom";
 import Form from "../components/Form";
+import { Link } from "react-router-dom";
 import GoogleButton from "../components/GoogleButton";
-
-const SignUp = () => {
+import AuthLayout from "../components/AuthLayout";
+export default function SignUp() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black px-4">
-      <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-8 shadow-2xl shadow-black/40">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-white">
-            Create Your Account
-          </h1>
-
-          <p className="mt-2 text-zinc-400">
-            Build, manage, and grow with our platform.
-          </p>
-        </div>
-
-        <Form formType="signup" />
-
-        <p className="mt-6 text-center text-sm text-zinc-400">
-          Already have an account?{" "}
-          <Link
-            to="/login"
-            className="font-medium text-blue-500 transition hover:text-blue-400"
-          >
-            Sign In
-          </Link>
-        </p>
-        <div className="text-center text-2xl font-bold p-2 text-white">OR</div>
-        <div className="mt-2">
-        <GoogleButton />
-        </div>
-      </div>
-    </div>
+    <AuthLayout
+      title="Make room for possibility."
+      description="Create your account and start a conversation."
+    >
+      <Form formType="signup" />
+      <div className="divider">or continue with</div>
+      <GoogleButton />
+      <p className="auth-bottom">
+        Already have an account? <Link to="/login">Log in</Link>
+      </p>
+    </AuthLayout>
   );
-};
-
-export default SignUp;
+}

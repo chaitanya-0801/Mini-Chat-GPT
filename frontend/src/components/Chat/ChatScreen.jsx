@@ -21,9 +21,11 @@ const ChatScreen = () => {
   const params = useParams();
   const navigate = useNavigate();
 
-  const { activeChat, setRefreshChat } = useChat();
+  const { setRefreshChat } = useChat();
 
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const { register, handleSubmit, reset, setValue } = useForm({
+    defaultValues: { prompt: searchParams.get("prompt") || "" },
+  });
 
   const [chatId, setChatId] = useState(searchParams.get("chatId") || "");
 
@@ -32,6 +34,7 @@ const ChatScreen = () => {
   const [copiedId, setCopiedId] = useState(null);
 
   const bottomRef = useRef(null);
+  const joinedLink = useRef(null);
 
   // Copy Message
   const copyMessage = async (id, text) => {
@@ -49,32 +52,37 @@ const ChatScreen = () => {
     }
   };
 
-  // Fetch Messages
-  const fetchMessage = async (id) => {
-    if (!id) {
-      setMessages([]);
-      setChatId("");
-      return;
-    }
-
-    try {
-      const res = await getAllMessage(id);
-
-      setChatId(id);
-      setMessages(res?.data?.chat?.messages || []);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  // Load messages
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const streamRef = useRef(null);
   useEffect(() => {
-    const id = activeChat || searchParams.get("chatId");
-
-    if (id) {
-      fetchMessage(id);
-    }
-  }, [activeChat, searchParams]);
+    const id = searchParams.get("chatId") || (!params.seq ? params.chatId : "");
+    let live = true;
+    Promise.resolve().then(async () => {
+      if (!live) return;
+      setLoading(!!id);
+      setLoadError("");
+      setMessages([]);
+      setChatId(id || "");
+      if (!id) return;
+      try {
+        const res = await getAllMessage(id);
+        if (live) setMessages(res.data.chat?.messages || []);
+      } catch (error) {
+        if (live)
+          setLoadError(
+            error.response?.data?.message ||
+              "Could not load this conversation. Refresh to try again.",
+          );
+      } finally {
+        if (live) setLoading(false);
+      }
+    });
+    return () => {
+      live = false;
+      streamRef.current?.abort();
+    };
+  }, [searchParams, params.chatId, params.seq]);
 
   // Auto Scroll
   useEffect(() => {
@@ -86,12 +94,15 @@ const ChatScreen = () => {
   // Join Shared Chat
   useEffect(() => {
     if (!(params?.seq && params?.chatId)) return;
+    const linkKey = `${params.chatId}/${params.seq}`;
+    if (joinedLink.current === linkKey) return;
+    joinedLink.current = linkKey;
 
     const join = async () => {
       const toastId = toast.loading("Joining chat...");
 
       try {
-        const res = await joinChat(params.seq, params.chatId);
+        const res = await joinChat(params.chatId, params.seq);
 
         if (res?.data?.success) {
           toast.success("Added to shared chat!", {
@@ -106,7 +117,7 @@ const ChatScreen = () => {
             chatId: params.chatId,
           });
 
-          navigate(`/?chatId=${params.chatId}`);
+          navigate(`/chat?chatId=${params.chatId}`);
         } else {
           toast.error(res?.data?.message || "Could not join.", {
             id: toastId,
@@ -120,7 +131,7 @@ const ChatScreen = () => {
     };
 
     join();
-  }, [params.seq, params.chatId]);
+  }, [params.seq, params.chatId, navigate, setSearchParams]);
 
   // Submit
   const onSubmit = async (data) => {
@@ -132,6 +143,7 @@ const ChatScreen = () => {
 
     try {
       setSent(true);
+      streamRef.current = new AbortController();
 
       // Add user message immediately
       const userMessage = {
@@ -155,9 +167,11 @@ const ChatScreen = () => {
       // Start streaming request
       const response = await fetch(`${API_URL}/chat/ask/${chatId || ""}`, {
         method: "POST",
+        signal: streamRef.current.signal,
 
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
 
         credentials: "include",
@@ -179,6 +193,7 @@ const ChatScreen = () => {
       const decoder = new TextDecoder();
 
       let buffer = "";
+      let completed = false;
 
       while (true) {
         const { value, done } = await reader.read();
@@ -211,6 +226,8 @@ const ChatScreen = () => {
           }
 
           // AI text chunk
+          if (parsedData.type === "error")
+            throw new Error(parsedData.message || "Response interrupted");
           if (parsedData.type === "text") {
             setMessages((prev) =>
               prev.map((message) =>
@@ -226,6 +243,7 @@ const ChatScreen = () => {
 
           // Stream finished
           if (parsedData.type === "done") {
+            completed = true;
             const newChatId = parsedData.chatId;
 
             if (newChatId) {
@@ -253,10 +271,13 @@ const ChatScreen = () => {
           }
         }
       }
+      if (!completed)
+        throw new Error("The response was interrupted. Please try again.");
     } catch (error) {
       console.error(error);
 
-      toast.error(error.message || "Failed to generate AI response");
+      if (error.name !== "AbortError")
+        toast.error(error.message || "Failed to generate AI response");
 
       // Remove temporary AI message
       if (tempAIMessage) {
@@ -270,14 +291,26 @@ const ChatScreen = () => {
   };
 
   return (
-    <div className="flex h-[95%] flex-1 flex-col bg-zinc-950 text-white">
+    <div className="conversation flex min-h-0 flex-1 flex-col bg-zinc-950 text-white">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-8">
-        {messages.length === 0 ? (
+        {loading ? (
+          <p role="status" className="muted text-center">
+            Loading conversation�
+          </p>
+        ) : loadError ? (
+          <p role="alert" className="muted text-center">
+            {loadError}
+          </p>
+        ) : messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center">
-            <h1 className="text-5xl font-bold">How can I help you today?</h1>
+            <h1 className="chat-greeting">
+              A little curiosity goes a long way.
+            </h1>
 
-            <p className="mt-4 text-zinc-500">Start a conversation below.</p>
+            <p className="mt-4 text-zinc-500">
+              What would you like to explore today?
+            </p>
 
             <div className="mt-10 grid max-w-2xl gap-4 md:grid-cols-2">
               {[
@@ -357,12 +390,10 @@ const ChatScreen = () => {
                   {msg.ownerType !== "user" && (
                     <div className="mt-4 flex justify-end">
                       <button
-                        onClick={() =>
-                          navigator.clipboard.writeText(msg.content)
-                        }
+                        onClick={() => copyMessage(msg._id, msg.content)}
                         className="text-sm text-zinc-400 transition hover:text-white"
                       >
-                        Copy
+                        {copiedId === msg._id ? "Copied!" : "Copy"}
                       </button>
                     </div>
                   )}
@@ -405,7 +436,10 @@ const ChatScreen = () => {
 
       {/* Input */}
       <div className="border-t border-zinc-800 bg-zinc-950 p-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="mx-auto max-w-4xl">
+        <form
+          onSubmit={(event) => handleSubmit(onSubmit)(event)}
+          className="mx-auto max-w-4xl"
+        >
           <div className="flex items-center rounded-2xl border border-zinc-700 bg-zinc-900 px-4">
             <div className="flex-1">
               <FormField
@@ -418,7 +452,8 @@ const ChatScreen = () => {
 
             <button
               type="submit"
-              disabled={sent}
+              aria-label="Send message"
+              disabled={sent || loading || !!loadError}
               className="ml-3 rounded-xl bg-blue-600 p-3 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <SendHorizontal size={20} />

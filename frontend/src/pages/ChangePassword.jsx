@@ -1,102 +1,103 @@
-import { useLocation, useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import FormField from "../components/FormField";
 import CTAButton from "../components/CTAButton";
+import AuthLayout from "../components/AuthLayout";
 import { passwordResetLink, changePassword } from "../services/authServices";
 import toast from "react-hot-toast";
-const ChangePassword = () => {
-  const { register, reset, handleSubmit } = useForm();
-  const { pathname } = useLocation();
+export default function ChangePassword() {
   const { token, userId } = useParams();
-  const isForgotPassword = pathname === "/send-password-reset-email";
-
-  const onSubmit = async (data) => {
-    const toastId = toast.loading(
-      isForgotPassword ? "Sending Link...." : "Changing Password....",
-    );
-
+  const forgot = !token;
+  const {
+    register,
+    handleSubmit,
+    getValues,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm();
+  const submit = async (data) => {
     try {
-      if (isForgotPassword) {
-        const res = await passwordResetLink(data);
-        if (res.data.success) {
-          toast.success("Link Sent", {
-            toastId,
-          });
-        }
-      } else {
-        const res = await changePassword(token, userId, data);
-        if (res.data.success) {
-          toast.success("Password Changed Successfully", {
-            toastId,
-          });
-        }
-      }
-      reset();
-    } catch (error) {
-      toast.error(
-        isForgotPassword ? "Link is not sent" : "Error in Changing Password",
-        {
-          toastId,
-        },
+      const r = await (forgot
+        ? passwordResetLink(data)
+        : changePassword(token, userId, data));
+      if (!r.data.success)
+        throw new Error(r.data.message || "Please try again.");
+      toast.success(
+        forgot
+          ? "Reset link sent. Check your inbox."
+          : "Password updated. You can now log in.",
       );
-    } finally {
-      toast.dismiss(toastId);
+      reset();
+    } catch (e) {
+      toast.error(
+        e.response?.data?.message ||
+          e.message ||
+          "Request failed. Please try again.",
+      );
     }
   };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black px-4">
-      <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-8 shadow-2xl">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-white">
-            {isForgotPassword ? "Forgot Password" : "Reset Password"}
-          </h1>
-
-          <p className="mt-2 text-sm text-zinc-400">
-            {isForgotPassword
-              ? "Enter your registered email and we'll send you a reset link."
-              : "Create a new password for your account."}
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          {isForgotPassword ? (
-            <>
-              <FormField
-                id="email"
-                type="email"
-                label="Email Address"
-                placeholder="Enter your email"
-                register={register}
-              />
-
-              <CTAButton type="submit" text="Send Reset Link" />
-            </>
-          ) : (
-            <>
-              <FormField
-                id="password"
-                label="New Password"
-                placeholder="Enter new password"
-                type="password"
-                register={register}
-              />
-
-              <FormField
-                id="confirmPass"
-                label="Confirm Password"
-                placeholder="Confirm new password"
-                type="password"
-                register={register}
-              />
-
-              <CTAButton type="submit" text="Update Password" />
-            </>
-          )}
-        </form>
-      </div>
-    </div>
+    <AuthLayout
+      title={forgot ? "Forgot your password?" : "A fresh start."}
+      description={
+        forgot
+          ? "Enter your registered email to receive a reset link."
+          : "Choose a new password for your account."
+      }
+    >
+      <form onSubmit={handleSubmit(submit)}>
+        {forgot ? (
+          <FormField
+            id="email"
+            type="email"
+            label="Email address"
+            placeholder="you@example.com"
+            register={register}
+            validation={{ required: "Email is required" }}
+            error={errors.email}
+          />
+        ) : (
+          <>
+            <FormField
+              id="password"
+              type="password"
+              label="New password"
+              register={register}
+              validation={{
+                required: "Password is required",
+                minLength: { value: 6, message: "Use at least 6 characters" },
+              }}
+              error={errors.password}
+            />
+            <FormField
+              id="confirmPass"
+              type="password"
+              label="Confirm password"
+              register={register}
+              validation={{
+                required: "Confirm your password",
+                validate: (v) =>
+                  v === getValues("password") || "Passwords do not match",
+              }}
+              error={errors.confirmPass}
+            />
+          </>
+        )}
+        <CTAButton
+          type="submit"
+          disabled={isSubmitting}
+          text={
+            isSubmitting
+              ? "Please wait…"
+              : forgot
+                ? "Send reset link"
+                : "Update password"
+          }
+        />
+      </form>
+      <Link className="auth-link" to="/login">
+        Back to login
+      </Link>
+    </AuthLayout>
   );
-};
-
-export default ChangePassword;
+}
