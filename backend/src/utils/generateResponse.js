@@ -38,7 +38,7 @@ import OpenAI from "openai";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-export const getOpenAIAPIResponse = async (contents, stream = false) => {
+export const generateResponse = async (contents, stream = false) => {
   try {
     const messages = Array.isArray(contents)
       ? contents.map((item) => ({
